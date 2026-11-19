@@ -13,6 +13,7 @@ on:
   push:
     branches: ["**"]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -32,21 +33,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image:
-          - debian:13
-          - ubuntu:24.04
-    name: deb (${{ matrix.image }})
+        job:
+          - image: "debian:13"
+            assetname: trixie
+          - image: "ubuntu:24.04"
+            assetname: noble
+          - image: "ubuntu:26.04"
+            assetname: resolute
+    name: deb (${{ matrix.job.assetname }})
     steps:
       - uses: actions/checkout@v5
-      - name: Build .deb in ${{ matrix.image }}
+      - name: Build .deb in ${{ matrix.job.image }}
         run: |
-          docker run --rm -v "$PWD:/src" -w /src "${{ matrix.image }}" \
+          docker run --rm -v "$PWD:/src" -w /src "${{ matrix.job.image }}" \
             bash /src/ci/build-deb.sh
       - name: Upload packages
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: deb-${{ strategy.job-index }}
+          name: deb-${{ matrix.job.assetname }}
           path: dist/deb/*.deb
           if-no-files-found: ignore
 
@@ -55,22 +60,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image:
-          - rockylinux/rockylinux:9
-          - rockylinux/rockylinux:10
-          - opensuse/leap:16.0
-          - opensuse/tumbleweed
-    name: rpm (${{ matrix.image }})
+        job:
+          - image: "rockylinux/rockylinux:9"
+            assetname: rocky9
+          - image: "rockylinux/rockylinux:10"
+            assetname: rocky10
+          - image: "opensuse/leap:16.0"
+            assetname: leap
+          - image: "opensuse/tumbleweed"
+            assetname: tumbleweed
+    name: rpm (${{ matrix.job.assetname }})
     steps:
       - uses: actions/checkout@v5
-      - name: Build .rpm in ${{ matrix.image }}
+      - name: Build .rpm in ${{ matrix.job.assetname }}
         run: |
-          docker run --rm -v "$PWD:/src" -w /src "${{ matrix.image }}" \
+          docker run --rm -v "$PWD:/src" -w /src "${{ matrix.job.image }}" \
             bash /src/ci/build-rpm.sh
       - name: Upload packages
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rpm-${{ strategy.job-index }}
+          name: rpm-${{ matrix.job.assetname }}
           path: dist/rpm/*.rpm
           if-no-files-found: ignore
