@@ -955,7 +955,14 @@ static int iscsi_apply_acl(const char *acl, const struct fab_target *t)
 	char	p[PATHLEN];
 	size_t	i;
 
-	for (i = 0; i < sizeof(attrs) / sizeof(attrs[0]); i++)
+	/* Check, if the acl argument is actually a tpgt_
+	 * If so, we must skip attrib/dataout_timeout, because that exists
+	 * in initiator settings only.
+	 */
+	const char *last_slash = strrchr(acl, '/');
+	int is_tpg = NULL != last_slash && 0 == strncmp(last_slash, "/tpgt_", 6);
+
+	for (i = is_tpg ? 1 : 0; i < sizeof(attrs) / sizeof(attrs[0]); i++)
 		if (mkpath(p, "%s/%s", acl, attrs[i].attr) ||
 		    cfs_write(p, attrs[i].val))
 			return -1;
