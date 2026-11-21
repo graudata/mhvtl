@@ -877,15 +877,21 @@ static int iscsi_apply_endpoints(const char *tpg, const struct fab_conf *conf)
 
 static int iscsi_apply_tpg(const char *tpg, const struct fab_target *t)
 {
+	/* Attribute values that may be reversed.
+	 * In demo mode, values are reversed (zero => "1", one => "0")
+	 */
+	const char *normal_zero = (t->demo_mode) ? "1" : "0";
+	const char *normal_one = (t->demo_mode) ? "0" : "1";
+
 	static const struct {
 		const char *attr, *val;
 	} attrs[] = {
-		/* Explicit ACLs only: no demo mode, no dynamic ACLs */
-		{ "attrib/generate_node_acls", "0" },
-		{ "attrib/cache_dynamic_acls", "0" },
-		{ "attrib/demo_mode_write_protect", "1" },
+		/* Explicit ACLs only: no demo mode, no dynamic ACLs unless t->demo_mode is != 0 */
+		{ "attrib/generate_node_acls", normal_zero },
+		{ "attrib/cache_dynamic_acls", normal_zero },
+		{ "attrib/demo_mode_write_protect", normal_one },
 		/* Unlisted initiators don't see the target in SendTargets */
-		{ "attrib/demo_mode_discovery", "0" },
+		{ "attrib/demo_mode_discovery", normal_zero },
 		/*
 		 * Tape runs one command at a time, so each round trip costs
 		 * throughput. With InitialR2T=No and a 256 KiB first burst, a
