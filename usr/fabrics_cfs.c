@@ -650,6 +650,14 @@ static int apply_target(const struct fabric_ops *ops, const struct fab_target *t
 			return -1;
 		}
 	}
+	if (t->demo_mode) {
+		if (ops->apply_acl && ops->apply_acl(tpg, t)) {
+			set_err(errbuf, errlen,
+				"%s: cannot configure the target-level ACL of %s",
+				t->wwn, strerror(errno));
+			return -1;
+		}
+	}
 
 	/* ACLs the configuration no longer lists */
 	if (!mkpath(p, "%s/acls", tpg) && (d = opendir(p))) {
@@ -877,15 +885,16 @@ static int iscsi_apply_endpoints(const char *tpg, const struct fab_conf *conf)
 
 static int iscsi_apply_tpg(const char *tpg, const struct fab_target *t)
 {
-	static const struct {
+	const struct {
 		const char *attr, *val;
 	} attrs[] = {
-		/* Explicit ACLs only: no demo mode, no dynamic ACLs */
-		{ "attrib/generate_node_acls", "0" },
-		{ "attrib/cache_dynamic_acls", "0" },
-		{ "attrib/demo_mode_write_protect", "1" },
+		/* Explicit ACLs only: no demo mode, no dynamic ACLs unless demo_mode
+		 * (then these four attributes are inverted) */
+		{ "attrib/generate_node_acls", t->demo_mode ? "1" : "0" },
+		{ "attrib/cache_dynamic_acls", t->demo_mode ? "1" : "0" },
+		{ "attrib/demo_mode_write_protect", t->demo_mode ? "0" : "1" },
 		/* Unlisted initiators don't see the target in SendTargets */
-		{ "attrib/demo_mode_discovery", "0" },
+		{ "attrib/demo_mode_discovery", t->demo_mode ? "1" : "0" },
 		/*
 		 * Tape runs one command at a time, so each round trip costs
 		 * throughput. With InitialR2T=No and a 256 KiB first burst, a
